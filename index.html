@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>耳波日本語｜町屋玄関 Interactives</title>
+<link rel="preconnect" href="https://fonts.googleapis.cn">
+<link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin>
+<link href="https://fonts.googleapis.cn/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;font-family:'Noto Sans JP',sans-serif;background:#F5F0E8;color:#3a3a3a}
+#app{display:flex;flex-direction:column;height:100%}
+header{padding:12px 28px;background:rgba(255,255,255,0.88);border-bottom:1px solid #d8d0c4;display:flex;align-items:baseline;gap:16px;flex-shrink:0;backdrop-filter:blur(6px)}
+header h1{font-family:'Noto Serif JP',serif;font-size:21px;font-weight:700;color:#2c2418;letter-spacing:.08em}
+header span{font-size:12.5px;color:#8a7e6e;font-weight:400;letter-spacing:.04em}
+#viewport{flex:1;position:relative;overflow:hidden}
+#viewport canvas{display:block}
+
+/* popup */
+#popup{position:absolute;top:50%;right:20px;transform:translateY(-50%);width:330px;max-height:68vh;overflow-y:auto;background:rgba(255,255,252,0.97);border:1px solid #c8c0b4;border-radius:10px;padding:22px 20px 18px;box-shadow:0 6px 36px rgba(60,50,30,.10);z-index:100;opacity:0;pointer-events:none;transition:opacity .28s ease,transform .28s ease}
+#popup.visible{opacity:1;pointer-events:auto;transform:translateY(-50%) translateX(0)}
+#popup:not(.visible){transform:translateY(-50%) translateX(16px)}
+#popup-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:20px;color:#8a7e6e;cursor:pointer;line-height:1;padding:4px 6px;border-radius:4px;transition:background .15s}
+#popup-close:hover{background:rgba(0,0,0,.06)}
+#popup-kana{font-size:12.5px;color:#9a8e7e;margin-bottom:1px;letter-spacing:.06em}
+#popup-name{font-family:'Noto Serif JP',serif;font-size:25px;font-weight:700;color:#2c2418;margin-bottom:13px;padding-bottom:11px;border-bottom:1.5px solid #d8d0c4;letter-spacing:.06em}
+#popup-desc{font-size:14px;line-height:1.95;color:#4a4030;letter-spacing:.02em;text-align:justify}
+#popup-desc p{margin:0}
+
+/* component 3D labels */
+.comp-label{font-family:'Noto Sans JP',sans-serif;font-size:11px;font-weight:600;color:#4a4540;background:rgba(255,255,252,.78);padding:1px 6px;border-radius:3px;border:1px solid rgba(0,0,0,.08);white-space:nowrap;pointer-events:none;user-select:none;line-height:1.5;backdrop-filter:blur(2px);text-align:center;letter-spacing:.08em}
+
+/* ===== Learning Panel ===== */
+#lp{position:absolute;top:60px;left:14px;width:360px;background:rgba(248,245,238,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:24px;border-left:5px solid #BC9A6C;box-shadow:0 8px 40px rgba(60,50,30,.12);z-index:200;overflow:hidden;transition:height .3s ease}
+#lp.minimized{height:42px!important;overflow:hidden}
+#lp-head{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #E0D6C8;cursor:default}
+#lp-head .lp-title{font-family:'Noto Serif JP',serif;font-size:14px;color:#4A3728;font-weight:600;letter-spacing:.04em;text-align:center;flex:1}
+#lp-min-btn{background:none;border:none;font-size:18px;color:#8B7A66;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1;transition:background .15s}
+#lp-min-btn:hover{background:rgba(0,0,0,.06)}
+#lp-body{padding:14px 18px 12px;max-height:calc(100vh - 180px);overflow-y:auto}
+#lp-body::-webkit-scrollbar{width:4px}
+#lp-body::-webkit-scrollbar-thumb{background:#D1C6B8;border-radius:2px}
+.lp-progress{text-align:center;font-size:14px;color:#8B7A66;margin-bottom:12px;letter-spacing:.08em;font-weight:500}
+.lp-kanji{text-align:center;font-family:'Noto Serif JP',serif;font-size:28px;font-weight:700;color:#4A3728;margin-bottom:14px;letter-spacing:.1em}
+.lp-audio-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:14px}
+.lp-audio-btn{width:48px;height:48px;border-radius:50%;background:#E8E2D8;border:none;font-size:20px;cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center}
+.lp-audio-btn:hover{background:#DDD6C8}
+.lp-audio-btn:active{transform:scale(.94)}
+.lp-audio-btn.playing{background:#BC9A6C;color:#fff}
+.lp-audio-sub{font-size:12px;color:#8B7A66;margin-top:4px}
+.lp-section{margin-bottom:14px}
+.lp-label{font-family:'Noto Serif JP',serif;font-size:13px;color:#8B7A66;margin-bottom:6px;font-weight:500}
+.lp-input-row{display:flex;gap:8px;align-items:center}
+.lp-input{flex:1;height:40px;border:1px solid #E0D6C8;border-radius:28px;padding:0 16px;font-size:14px;font-family:'Noto Sans JP',sans-serif;color:#4A3728;outline:none;transition:border-color .2s;background:rgba(255,255,255,.6)}
+.lp-input:focus{border-color:#BC9A6C}
+.lp-input::placeholder{color:#C4B8A8}
+.lp-confirm{width:70px;height:40px;background:#BC9A6C;color:#fff;border:none;border-radius:28px;font-size:14px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:background .15s}
+.lp-confirm:hover{background:#A88758}
+.lp-feedback{font-size:14px;min-height:22px;margin-top:4px;transition:opacity .2s}
+.lp-feedback.correct{color:#5B8C5A}
+.lp-feedback.wrong{color:#C45A4A}
+.lp-card{background:#FCF9F5;border-radius:16px;padding:12px 14px;margin-bottom:14px;position:relative}
+.lp-card-top{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.lp-card-kanji{font-family:'Noto Serif JP',serif;font-size:18px;font-weight:700;color:#4A3728}
+.lp-card-kana{font-size:14px;color:#8B7A66}
+.lp-card-mean{font-size:14px;color:#8B7A66;line-height:1.5}
+.lp-culture{margin-bottom:14px;padding-top:10px;border-top:1px solid #E0D6C8}
+.lp-culture-title{font-family:'Noto Serif JP',serif;font-size:13px;color:#8B7A66;margin-bottom:6px;font-weight:500}
+.lp-culture{font-size:14px;color:#8B7A66;line-height:1.6;font-style:italic;transition:all .3s}
+.lp-culture.lp-culture-blur{filter:blur(3px);user-select:none;pointer-events:none}
+.lp-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 14px;border-top:1px solid #E0D6C8}
+.lp-nav-btn{background:none;border:none;font-size:14px;color:#8B7A66;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:color .15s;padding:4px 8px;border-radius:4px}
+.lp-nav-btn:hover{color:#BC9A6C}
+.lp-nav-btn:disabled{opacity:.4;cursor:default;color:#8B7A66}
+.lp-dots{display:flex;gap:6px;align-items:center}
+.lp-dot{width:8px;height:8px;border-radius:50%;background:#D1C6B8;border:none;cursor:pointer;padding:0;transition:background .2s}
+.lp-dot.active{background:#BC9A6C}
+.lp-dot:hover{background:#BC9A6C}
+.lp-fade{animation:lpFadeIn .2s ease}
+@keyframes lpFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>耳波日本語｜町屋玄関 Interactives</h1>
+    <span>クリックすると、町屋の礼儀と空間文化が聞こえてくる</span>
+  </header>
+  <main id="viewport"></main>
+
+</div>
+
+<div id="popup">
+  <button id="popup-close">&times;</button>
+  <div id="popup-kana"></div>
+  <h2 id="popup-name"></h2>
+  <div id="popup-desc"></div>
+</div>
+
+<div id="lp">
+  <div id="lp-head">
+    <span class="lp-title">聞き書き帖</span>
+    <button id="lp-min-btn">−</button>
+  </div>
+  <div id="lp-body"></div>
+  <div class="lp-nav">
+    <button class="lp-nav-btn" id="lp-prev">← 前へ</button>
+    <div class="lp-dots" id="lp-dots"></div>
+    <button class="lp-nav-btn" id="lp-next">次へ →</button>
+  </div>
+</div>
+
+
+
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import*as THREE from'three';
+import{OrbitControls}from'three/addons/controls/OrbitControls.js';
+import{CSS2DRenderer,CSS2DObject}from'three/addons/renderers/CSS2DRenderer.js';
+
+/* Move overlays into viewport */
+const viewport=document.getElementById('viewport');
+viewport.appendChild(document.getElementById('popup'));
+
+
+/* ============ 构件文化释义数据 ============ */
+const COMP={
+  kurumayose:{name:'車寄せ',kana:'くるまよせ',color:0xC09070,
+    desc:'来客が最初に目にする空間であり、公的な街路から私的領域へ入る際の「心理的なブレーキ」の役割を果たす。また、「表（おもて）」の公共的秩序から「裏（うら）」の私的な居住空間へ移行する最初の境界を象徴しており、外部社会と家庭空間を切り替える重要な意味を担っている。'},
+  shikigawara:{name:'式瓦',kana:'しきがわら',color:0x6E8494,
+    desc:'来客と直接接触する部分ではないものの、その整然とした状態は「主人が細部まで気を配っている」という無言の印象を与える。さらに、整った秩序感そのものが住まい手の心配りや地域社会に共有された美意識を示す"暗黙の社交的名刺"として機能している。'},
+  doma:{name:'土間',kana:'どま',color:0x9E8C6A,
+    desc:'土間は来客が一時的に身を置く「待機空間」であり、ここで来意を告げ、上がり口へ進む前の準備を行う場所である。同時に、「表」と「裏」の中間に位置する曖昧な領域として、内外を区別しつつも柔軟に接続する日本的空間感覚を象徴している。'},
+  kutsunugiishi:{name:'沓脱石',kana:'くつぬぎいし',color:0x8AA0A8,
+    desc:'沓脱石は玄関作法の中心となる場所であり、来客はこの石の上で履物を脱ぎ、主人側へ向き直ることで相手の空間への敬意を示す。また、外界の穢れを門外に留め、「表」から「裏」へ心理的に切り替えるための、浄化と転換の象徴的な結節点としての意味も持っている。'},
+  kekomiita:{name:'蹴込み板',kana:'けこみいた',color:0xB87850,
+    desc:'蹴込み板は踏みつけるのではなく、またぐように越えることが求められ、その際には身体に明確な「上昇動作」が伴う。この動作によって、「上がる」という身体感覚が強調され、日常的な外部空間から格式ある内部空間へ移行する象徴的意味が与えられている。'},
+  shikidai:{name:'式台',kana:'しきだい',color:0xC8B890,
+    desc:'式台は身分ある客や正式な来客のために設けられた特別な上がり場であり、ここで正式な挨拶や身支度の整理が行われる。また、「内」と「外」の間に存在する格式的な緩衝空間として、階層的礼儀作法を室内空間へ延長する役割を果たしている。'},
+  agarikamachi:{name:'上がり框',kana:'あがりかまち',color:0x9E6840,
+    desc:'上り框は踏むことが禁忌とされ、必ず跨いで越えなければならない場所である。そのため、ここは「表」と「裏」を分ける最終的な結界として位置づけられ、越えることで初めて清浄な内部空間への正式な入場が認められる。'},
+  yukaita:{name:'床板',kana:'ゆかいた',color:0xA8B888,
+    desc:'床板へ足を踏み入れることで、一連の玄関儀礼は完結し、来客は正式な「客人」として受け入れられる。さらに、ここは清浄性と親和性の始点でもあり、この場所から初めて主客間の本格的な交流が許されると考えられている。'}
+};
+
+/* ============ 场景初始化 ============ */
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xF5F0E8);
+
+/* 正交相机——等轴测 */
+let viewSize=9;
+let aspect=viewport.clientWidth/viewport.clientHeight;
+const camera=new THREE.OrthographicCamera(
+  -viewSize*aspect/2,viewSize*aspect/2,
+  viewSize/2,-viewSize/2,0.1,200
+);
+camera.position.set(10,10,-5);
+
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(viewport.clientWidth,viewport.clientHeight);
+viewport.appendChild(renderer.domElement);
+
+/* CSS2D 标签渲染器 */
+const labelRenderer=new CSS2DRenderer();
+labelRenderer.setSize(viewport.clientWidth,viewport.clientHeight);
+labelRenderer.domElement.style.position='absolute';
+labelRenderer.domElement.style.top='0';
+labelRenderer.domElement.style.left='0';
+labelRenderer.domElement.style.pointerEvents='none';
+viewport.appendChild(labelRenderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,1.2,3.5);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.minZoom=0.35;
+controls.maxZoom=5;
+controls.update();
+
+/* 灯光 */
+scene.add(new THREE.AmbientLight(0xffffff,0.82));
+const dLight=new THREE.DirectionalLight(0xfff8f0,0.32);
+dLight.position.set(6,12,8);
+scene.add(dLight);
+const hLight=new THREE.HemisphereLight(0xfcf8f0,0x8a7e6e,0.12);
+scene.add(hLight);
+
+/* ============ 工具函数 ============ */
+const EDGE_CLR=0x3a3530;
+const HL_EDGE=0x2563EB;
+const HL_EMIT=0x4A90D9;
+
+function mat(c){return new THREE.MeshLambertMaterial({color:c});}
+
+function addEdge(mesh,clr=EDGE_CLR){
+  const eg=new THREE.EdgesGeometry(mesh.geometry,1);
+  const lm=new THREE.LineBasicMaterial({color:clr});
+  const ls=new THREE.LineSegments(eg,lm);
+  ls.raycast=()=>{};
+  mesh.add(ls);
+  return ls;
+}
+
+function mkBox(w,h,d,color,edgeClr){
+  const g=new THREE.BoxGeometry(w,h,d);
+  const m=new THREE.Mesh(g,mat(color));
+  addEdge(m,edgeClr);
+  return m;
+}
+
+function pyramidGeo(bw,bd,h){
+  const hw=bw/2,hd=bd/2;
+  const v=new Float32Array([
+    -hw,0,-hd, 0,h,0, hw,0,-hd,
+    hw,0,-hd,  0,h,0, hw,0,hd,
+    hw,0,hd,   0,h,0,-hw,0,hd,
+    -hw,0,hd,  0,h,0,-hw,0,-hd,
+    -hw,0,-hd, hw,0,-hd, hw,0,hd,
+    -hw,0,-hd, hw,0,hd, -hw,0,hd,
+  ]);
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(v,3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* ============ 构件建模 ============ */
+const groups={};
+const clickables=[];
+const origMats=new Map();
+
+function reg(key,grp){
+  grp.userData.compKey=key;
+  groups[key]=grp;
+  grp.traverse(c=>{
+    if(c.isMesh){c.userData.compKey=key;clickables.push(c);}
+    if(c.isMesh||c.isLineSegments) origMats.set(c.uuid,c.material);
+  });
+  scene.add(grp);
+}
+
+/* 在构件附近添加3D标签 */
+function addLabel(key,pos){
+  const c=COMP[key];
+  const div=document.createElement('div');
+  div.className='comp-label';
+  div.innerHTML=c.name;
+  const label=new CSS2DObject(div);
+  label.position.set(pos[0],pos[1],pos[2]);
+  groups[key].add(label);
+}
+
+/* --- 1. 車寄せ (kurumayose) --- */
+{
+  const g=new THREE.Group();
+  /* 底座 3.64×2.10×0.05 */
+  const base=mkBox(3.64,0.05,2.10,0xC09070);
+  base.position.set(0,-0.025,-1.05);
+  g.add(base);
+  /* 4根方形立柱 0.2×0.2×2.4 */
+  for(const x of[-1.72,1.72])for(const z of[-2.00,-0.10]){
+    const p=mkBox(0.2,2.4,0.2,0xA07858);
+    p.position.set(x,1.20,z);
+    g.add(p);
+  }
+  /* 屋顶 正四坡三棱锥 3.64×2.10 锥高0.75 */
+  const roofGeo=pyramidGeo(3.64,2.10,0.75);
+  const roofMesh=new THREE.Mesh(roofGeo,mat(0x8B6E55));
+  roofMesh.position.set(0,2.40,-1.05);
+  addEdge(roofMesh);
+  g.add(roofMesh);
+  /* 横梁 */
+  for(const z of[-2.00,-0.10]){
+    const b=mkBox(3.44,0.12,0.12,0x9A7E65);
+    b.position.set(0,2.34,z);
+    g.add(b);
+  }
+  for(const x of[-1.72,1.72]){
+    const b=mkBox(0.12,0.12,1.90,0x9A7E65);
+    b.position.set(x,2.34,-1.05);
+    g.add(b);
+  }
+  reg('kurumayose',g);
+  addLabel('kurumayose',[0,2.85,-1.25]);
+}
+
+/* --- 2. 式瓦 (shikigawara) --- */
+{
+  const g=new THREE.Group();
+  const tileBase=mkBox(3.60,0.02,2.10,0x6E8494);
+  tileBase.position.set(0,0.01,-1.05);
+  g.add(tileBase);
+  /* 瓦片网格线 */
+  const pts=[];
+  const y=0.022;
+  for(let i=0;i<=12;i++){const x=-1.80+i*0.30;pts.push(x,y,-2.10,x,y,0);}
+  for(let j=0;j<=7;j++){const z=-2.10+j*0.30;pts.push(-1.80,y,z,1.80,y,z);}
+  const gridGeo=new THREE.BufferGeometry();
+  gridGeo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+  const gridLine=new THREE.LineSegments(gridGeo,new THREE.LineBasicMaterial({color:0x4A5A65}));
+  gridLine.raycast=()=>{};
+  g.add(gridLine);
+  /* 瓦边缘凸起 */
+  for(const z of[-2.09,-0.01]){
+    const r=mkBox(3.60,0.025,0.02,0x5A6A78);
+    r.position.set(0,0.0225,z);
+    g.add(r);
+  }
+  for(const x of[-1.79,1.79]){
+    const r=mkBox(0.02,0.025,2.10,0x5A6A78);
+    r.position.set(x,0.0225,-1.05);
+    g.add(r);
+  }
+  reg('shikigawara',g);
+  addLabel('shikigawara',[1.7,0.10,-1.2]);
+}
+
+/* --- 3. 土間 (doma) --- */
+{
+  const g=new THREE.Group();
+  const m=mkBox(3.64,0.05,1.50,0x9E8C6A);
+  m.position.set(0,-0.025,0.75);
+  g.add(m);
+  reg('doma',g);
+  addLabel('doma',[-1.7,0.08,0.75]);
+}
+
+/* --- 4. 沓脱石 (kutsunugiishi) --- */
+{
+  const g=new THREE.Group();
+  const m=mkBox(1.2,0.07,0.6,0x8AA0A8);
+  m.position.set(0,0.035,0.75);
+  g.add(m);
+  reg('kutsunugiishi',g);
+  addLabel('kutsunugiishi',[0.5,0.10,0.50]);
+}
+
+/* --- 5. 蹴込み板 (kekomiita) --- */
+{
+  const g=new THREE.Group();
+  const m=mkBox(3.64,0.21,0.03,0xB87850);
+  m.position.set(0,0.105,1.575);
+  g.add(m);
+  reg('kekomiita',g);
+  addLabel('kekomiita',[1.7,0.14,1.58]);
+}
+
+/* --- 6. 式台 (shikidai) --- */
+{
+  const g=new THREE.Group();
+  const m=mkBox(3.64,0.05,0.90,0xC8B890);
+  m.position.set(0,0.185,1.95);
+  g.add(m);
+  /* 式台下的支撑结构 */
+  const s1=mkBox(3.44,0.16,0.03,0xB0A078);
+  s1.position.set(0,0.08,1.53);
+  g.add(s1);
+  const s2=mkBox(3.44,0.16,0.03,0xB0A078);
+  s2.position.set(0,0.08,2.37);
+  g.add(s2);
+  reg('shikidai',g);
+  addLabel('shikidai',[-1.7,0.14,1.95]);
+}
+
+/* --- 7. 上がり框 (agarikamachi) --- */
+{
+  const g=new THREE.Group();
+  const m=mkBox(3.64,0.09,0.15,0x9E6840);
+  m.position.set(0,0.255,2.475);
+  g.add(m);
+  reg('agarikamachi',g);
+  addLabel('agarikamachi',[1.7,0.36,2.48]);
+}
+
+/* --- 8. 床板 (yukaita) --- */
+{
+  const g=new THREE.Group();
+  const m=mkBox(3.64,0.09,2.00,0xA8B888);
+  m.position.set(0,0.255,3.55);
+  g.add(m);
+  /* 床板下支撑 */
+  const s1=mkBox(3.44,0.21,0.03,0x98A878);
+  s1.position.set(0,0.105,2.62);
+  g.add(s1);
+  const s2=mkBox(3.44,0.21,0.03,0x98A878);
+  s2.position.set(0,0.105,4.48);
+  g.add(s2);
+  reg('yukaita',g);
+  addLabel('yukaita',[-1.7,0.36,3.55]);
+}
+
+/* ============ 町屋拡張（装飾要素・クリック無反応） ============ */
+const DC={
+  frame:0x6B4E35,beam:0x7A5A42,roof:0x4A5568,ridge:0x3A4558,
+  tatami:0x8BA86E,tatamiLine:0x6A8850,engawa:0xC4A060,
+  douniwa:0x7A8A6A,tsubo:0x6A7A5A,stone:0x8A9080,tree:0x5A7A50,
+  tokoWall:0xD8C8A8,tokoFloor:0xC8B898,koshi:0xA08060,
+  wall:0xE8DCC8,shin:0x5A3A25,trunk:0x6A5040,water:0x7AA8C0,
+  basin:0x8A9AAA,rear:0xB8A888
+};
+
+/* --- 地面基盤 --- */
+{
+  const g=mkBox(6.0,0.02,17.0,0xD8D0C0);
+  g.position.set(0,-0.04,5.5);
+  scene.add(g);
+}
+
+/* --- 主体フレーム --- */
+{
+  const pw=0.12,ph=3.0,bh=0.10;
+  const xs=[-1.82,0,1.82],zs=[0,4.55,8.55,13.0];
+  for(const x of xs)for(const z of zs){
+    const p=mkBox(pw,ph,pw,DC.frame);p.position.set(x,ph/2,z);scene.add(p);
+  }
+  for(const z of zs)for(const xc of[-0.91,0.91]){
+    const b=mkBox(1.70,bh,0.10,DC.beam);b.position.set(xc,ph-bh/2,z);scene.add(b);
+  }
+  for(const x of xs)for(const[s,e]of[[0,4.55],[4.55,8.55],[8.55,13.0]]){
+    const b=mkBox(0.10,bh,e-s,DC.beam);b.position.set(x,ph-bh/2,(s+e)/2);scene.add(b);
+  }
+}
+
+/* --- 壁面板（玄関両側を開放） --- */
+{
+  const wH=3.0,wT=0.05;
+  /* 前壁 左 */
+  const fwl=mkBox(0.82,wH,wT,DC.wall);fwl.position.set(-1.41,wH/2,0);scene.add(fwl);
+  /* 前壁 右 */
+  const fwr=mkBox(0.82,wH,wT,DC.wall);fwr.position.set(1.41,wH/2,0);scene.add(fwr);
+  /* 前壁 上部 */
+  const fwt=mkBox(3.44,0.5,wT,DC.wall);fwt.position.set(0,2.75,0);scene.add(fwt);
+  /* 左側壁 玄関側は開放、座敷以降のみ設壁 */
+  const lsw2=mkBox(wT,wH,8.5,DC.wall);lsw2.position.set(-1.85,wH/2,8.75);scene.add(lsw2);
+  /* 右側壁 玄関側は開放、座敷以降のみ設壁 */
+  const rsw1=mkBox(wT,wH,8.5,DC.wall);rsw1.position.set(1.85,wH/2,8.75);scene.add(rsw1);
+  /* 背壁 */
+  const bw=mkBox(3.74,wH,wT,DC.wall);bw.position.set(0,wH/2,13.0);scene.add(bw);
+  /* 間仕切り 座敷↔坪庭 */
+  const ip=mkBox(2.0,wH,wT,DC.wall);ip.position.set(-0.82,wH/2,8.55);scene.add(ip);
+}
+
+/* --- 座敷 --- */
+{
+  const f=mkBox(3.44,0.04,4.0,DC.tatami);f.position.set(0,0.28,6.55);scene.add(f);
+  /* 畳グリッド */
+  const pts=[],ty=0.303;
+  for(let i=0;i<=4;i++){const x=-1.72+i*0.91;pts.push(x,ty,4.55,x,ty,8.55);}
+  for(let j=0;j<=2;j++){const z=4.55+j*2.0;pts.push(-1.72,ty,z,1.72,ty,z);}
+  const gGeo=new THREE.BufferGeometry();
+  gGeo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+  const gl=new THREE.LineSegments(gGeo,new THREE.LineBasicMaterial({color:DC.tatamiLine}));
+  gl.raycast=()=>{};scene.add(gl);
+  /* 段差縁 */
+  for(const z of[4.52,8.58]){const b=mkBox(3.64,0.04,0.06,0x9A8A6A);b.position.set(0,0.28,z);scene.add(b);}
+}
+
+/* --- 通庭 --- */
+{
+  const f=mkBox(0.72,0.03,13.0,DC.douniwa);f.position.set(1.46,-0.015,6.5);scene.add(f);
+  for(const z of[0.8,2.2,3.6,5.0,6.4,7.8,9.2,10.8,12.2]){
+    const s=mkBox(0.32,0.03,0.28,DC.stone);s.position.set(1.46,0.015,z);scene.add(s);
+  }
+}
+
+/* --- 坪庭 --- */
+{
+  const g=mkBox(3.44,0.02,2.0,DC.tsubo);g.position.set(0,-0.01,9.55);scene.add(g);
+  for(const[x,y,z]of[[-0.5,0.02,9.0],[0.6,0.02,9.3],[-0.3,0.02,9.8],[0.7,0.02,10.1]]){
+    const s=mkBox(0.32,0.04,0.28,DC.stone);s.position.set(x,y,z);scene.add(s);
+  }
+  /* 木 */
+  const tr=mkBox(0.10,2.2,0.10,DC.trunk);tr.position.set(-1.0,1.1,9.55);scene.add(tr);
+  const fg=pyramidGeo(1.2,1.2,1.4);
+  const fm=new THREE.Mesh(fg,mat(DC.tree));fm.position.set(-1.0,2.2,9.55);addEdge(fm);scene.add(fm);
+  /* 石鉢 */
+  const bs=mkBox(0.4,0.15,0.4,DC.basin);bs.position.set(0.6,0.075,9.8);scene.add(bs);
+  const wt=mkBox(0.3,0.01,0.3,DC.water);wt.position.set(0.6,0.155,9.8);scene.add(wt);
+}
+
+/* --- 外廊（縁側）--- */
+{
+  const f=mkBox(0.6,0.04,4.0,DC.engawa);f.position.set(-2.12,0.28,6.55);scene.add(f);
+  /* 支柱＋手すり */
+  for(const z of[4.65,5.55,6.55,7.55,8.45]){
+    const p=mkBox(0.05,0.55,0.05,DC.frame);p.position.set(-2.40,0.58,z);scene.add(p);
+  }
+  const rl=mkBox(0.04,0.04,3.9,DC.frame);rl.position.set(-2.40,0.86,6.55);scene.add(rl);
+  /* 下部支持梁 */
+  const sb=mkBox(0.06,0.06,4.0,DC.beam);sb.position.set(-2.40,0.03,6.55);scene.add(sb);
+}
+
+/* --- 大屋根 --- */
+{
+  const wH=3.0,rH=1.5,dep=13.0,spW=4.2,ov=0.6,ovD=0.3;
+  const hw=spW/2+ov,hl=dep/2+ov,ty=wH+rH,by=wH-ovD;
+  const v=new Float32Array([
+    /* 左斜面 */
+    -hw,by,-hl, 0,ty,-hl, 0,ty,hl,
+    -hw,by,-hl, 0,ty,hl, -hw,by,hl,
+    /* 右斜面 */
+    hw,by,-hl, 0,ty,hl, 0,ty,-hl,
+    hw,by,-hl, hw,by,hl, 0,ty,hl,
+    /* 前妻壁 */
+    -hw,by,-hl, 0,ty,-hl, hw,by,-hl,
+    /* 後妻壁 */
+    -hw,by,hl, hw,by,hl, 0,ty,hl,
+  ]);
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(v,3));
+  g.computeVertexNormals();
+  const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:DC.roof,side:THREE.DoubleSide}));
+  m.position.set(0,0,6.5);addEdge(m);scene.add(m);
+  /* 鬼瓦（棟） */
+  const rd=mkBox(0.12,0.10,dep+ov*2,DC.ridge);rd.position.set(0,ty,6.5);scene.add(rd);
+}
+
+/* --- 中心柱（大黒柱）--- */
+{
+  const p=mkBox(0.20,3.0,0.20,DC.shin);p.position.set(0,1.5,6.55);scene.add(p);
+}
+
+/* --- 格子窓 --- */
+{
+  const xR=1.40,yB=0.8,yT=2.5,sw=0.025;
+  for(let i=0;i<=14;i++){
+    const x=-xR+i*(2*xR/14);
+    const s=mkBox(sw,yT-yB,0.03,DC.koshi);s.position.set(x,(yB+yT)/2,0.02);scene.add(s);
+  }
+  for(let j=0;j<=7;j++){
+    const y=yB+j*((yT-yB)/7);
+    const s=mkBox(2*xR,sw,0.03,DC.koshi);s.position.set(0,y,0.02);scene.add(s);
+  }
+  /* 枠 */
+  const fw=0.06;
+  const fl=mkBox(fw,yT-yB+fw*2,0.04,DC.frame);fl.position.set(-xR-fw/2,(yB+yT)/2,0.02);scene.add(fl);
+  const fr=mkBox(fw,yT-yB+fw*2,0.04,DC.frame);fr.position.set(xR+fw/2,(yB+yT)/2,0.02);scene.add(fr);
+  const ft=mkBox(2*xR+fw*2,fw,0.04,DC.frame);ft.position.set(0,yT+fw/2,0.02);scene.add(ft);
+  const fb=mkBox(2*xR+fw*2,fw,0.04,DC.frame);fb.position.set(0,yB-fw/2,0.02);scene.add(fb);
+}
+
+/* --- 床の間 --- */
+{
+  const tW=1.2,tD=0.30,tH=1.6,tY=0.30;
+  const bw=mkBox(tW,tH,0.04,DC.tokoWall);bw.position.set(-0.6,tY+tH/2,8.38);scene.add(bw);
+  const s1=mkBox(0.04,tH,tD,DC.tokoWall);s1.position.set(-1.2,tY+tH/2,8.38-tD/2);scene.add(s1);
+  const s2=mkBox(0.04,tH,tD,DC.tokoWall);s2.position.set(0.0,tY+tH/2,8.38-tD/2);scene.add(s2);
+  const fl=mkBox(tW,0.03,tD,DC.tokoFloor);fl.position.set(-0.6,tY+0.015,8.38-tD/2);scene.add(fl);
+  /* 落し掛け */
+  const sh=mkBox(tW,0.04,tD*0.6,0x7A5A42);sh.position.set(-0.6,tY+tH*0.58,8.38-tD*0.3);scene.add(sh);
+  /* 鴨居 */
+  const tb=mkBox(tW+0.08,0.06,0.06,DC.frame);tb.position.set(-0.6,tY+tH,8.38);scene.add(tb);
+}
+
+/* --- 奥の間 --- */
+{
+  const f=mkBox(3.44,0.04,2.5,DC.rear);f.position.set(0,0.28,11.75);scene.add(f);
+}
+
+
+
+/* ============ 交互逻辑 ============ */
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+let activeKey=null;
+let downPos=null;
+
+function highlightAndShow(key){
+  if(activeKey&&activeKey!==key) unhighlight(activeKey);
+  if(activeKey===key){hidePopup();return;}
+  activeKey=key;
+  const grp=groups[key];
+  grp.traverse(c=>{
+    if(c.isMesh){
+      c.material=c.material.clone();
+      c.material.emissive=new THREE.Color(HL_EMIT);
+      c.material.emissiveIntensity=0.22;
+    }
+    if(c.isLineSegments){
+      c.material=c.material.clone();
+      c.material.color.set(HL_EDGE);
+    }
+  });
+  showPopup(key);
+}
+
+function unhighlight(key){
+  if(!key)return;
+  const grp=groups[key];
+  grp.traverse(c=>{
+    const orig=origMats.get(c.uuid);
+    if(orig&&(c.isMesh||c.isLineSegments)){
+      if(c.material!==orig) c.material.dispose();
+      c.material=orig;
+    }
+  });
+}
+
+/* 弹窗 */
+const popup=document.getElementById('popup');
+const popupKana=document.getElementById('popup-kana');
+const popupName=document.getElementById('popup-name');
+const popupDesc=document.getElementById('popup-desc');
+
+function showPopup(key){
+  const d=COMP[key];
+  popupKana.textContent=d.kana;
+  popupName.textContent=d.name;
+  popupDesc.innerHTML=`<p>${d.desc}</p>`;
+  popup.classList.add('visible');
+}
+function hidePopup(){
+  popup.classList.remove('visible');
+  if(activeKey){unhighlight(activeKey);activeKey=null;}
+}
+document.getElementById('popup-close').addEventListener('click',e=>{e.stopPropagation();hidePopup();});
+popup.addEventListener('pointerdown',e=>e.stopPropagation());
+popup.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
+
+/* 射线点击 */
+function castPointer(event){
+  const rect=renderer.domElement.getBoundingClientRect();
+  pointer.x=((event.clientX-rect.left)/rect.width)*2-1;
+  pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  return raycaster.intersectObjects(clickables,false);
+}
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  downPos={x:e.clientX,y:e.clientY};
+});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!downPos)return;
+  const dx=e.clientX-downPos.x,dy=e.clientY-downPos.y;
+  downPos=null;
+  if(Math.sqrt(dx*dx+dy*dy)>4)return;
+  const hits=castPointer(e);
+  if(hits.length>0){
+    const key=hits[0].object.userData.compKey;
+    if(key)highlightAndShow(key);else hidePopup();
+  }else{
+    hidePopup();
+  }
+});
+
+/* 悬停光标 */
+renderer.domElement.addEventListener('pointermove',e=>{
+  const hits=castPointer(e);
+  renderer.domElement.style.cursor=hits.length>0?'pointer':'';
+});
+
+/* ============ 响应式 ============ */
+function onResize(){
+  const w=viewport.clientWidth,h=viewport.clientHeight;
+  aspect=w/h;
+  camera.left=-viewSize*aspect/2;
+  camera.right=viewSize*aspect/2;
+  camera.top=viewSize/2;
+  camera.bottom=-viewSize/2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+  labelRenderer.setSize(w,h);
+}
+window.addEventListener('resize',onResize);
+
+/* ============ 学习面板 ============ */
+const LP_DATA=[
+  {kanji:'玄関',kana:'げんかん',mean:'家の正式な入り口',wordAudio:'assets/玄関.mp3',sentAudio:'assets/玄関で靴を脱ぐのはにほんの習慣です。.mp3',sentAns:'玄関で靴を脱ぐのは日本の習慣です。',wordAns:'玄関',culture:'玄関は外と内を分ける日本独自の境界概念である。'},
+  {kanji:'車寄せ',kana:'くるまよせ',mean:'玄関前の屋根付き空間',wordAudio:'assets/車寄せ.mp3',sentAudio:'assets/車寄せは来客を迎える最初の場所です。.mp3',sentAns:'車寄せは来客を迎える最初の場所です。',wordAns:'車寄せ',culture:'車寄せは公から私への心理的な境界である。'},
+  {kanji:'式瓦',kana:'しきがわら',mean:'玄関に敷かれた瓦',wordAudio:'assets/式瓦.mp3',sentAudio:'assets/式瓦は主人の気配りを示すものです。.mp3',sentAns:'式瓦は主人の気配りを示すものです。',wordAns:'式瓦',culture:'整然とした式瓦は暗黙の社交的名刺である。'},
+  {kanji:'土間',kana:'どま',mean:'玄関と室内をつなぐ空間',wordAudio:'assets/土間.mp3',sentAudio:'assets/来客は土間で靴を脱ぎます。.mp3',sentAns:'来客は土間で靴を脱ぎます。',wordAns:'土間',culture:'土間は「表」と「裏」をつなぐ中間空間である。'},
+  {kanji:'沓脱石',kana:'くつぬぎいし',mean:'靴を脱ぐための石',wordAudio:'assets/沓脱石.mp3',sentAudio:'assets/沓脱石の上で履物を脱ぐのが礼儀です。.mp3',sentAns:'沓脱石の上で履物を脱ぐのが礼儀です。',wordAns:'沓脱石',culture:'沓脱石は穢れを落とし、表から裏へ切り替える象徴的な結節点である。'},
+  {kanji:'蹴込み板',kana:'けこみいた',mean:'式台の前にある板',wordAudio:'assets/蹴込み板.mp3',sentAudio:'assets/蹴込み板は蹴るのではなく跨ぐものです。.mp3',sentAns:'蹴込み板は蹴るのではなく跨ぐものです。',wordAns:'蹴込み板',culture:'蹴込み板を越える動作に上昇の象徴的意味がある。'},
+  {kanji:'式台',kana:'しきだい',mean:'正式な上がり場',wordAudio:'assets/式台.mp3',sentAudio:'assets/式台は格式ある客のための上がり場です。.mp3',sentAns:'式台は格式ある客のための上がり場です。',wordAns:'式台',culture:'式台は身分による空間の格付けを示す。'},
+  {kanji:'上がり框',kana:'あがりかまち',mean:'玄関の境界部分',wordAudio:'assets/上がり框.mp3',sentAudio:'assets/上がり框は踏まずに跨ぎます。.mp3',sentAns:'上がり框は踏まずに跨ぎます。',wordAns:'上がり框',culture:'上がり框は内と外を分ける重要な境界である。'},
+  {kanji:'床板',kana:'ゆかいた',mean:'室内の床の板',wordAudio:'assets/床板.mp3',sentAudio:'assets/床板に足を踏み入れれば正式な客です。.mp3',sentAns:'床板に足を踏み入れれば正式な客です。',wordAns:'床板',culture:'床板は清浄な内部空間の始点である。'},
+  {kanji:'礼儀',kana:'れいぎ',mean:'敬意を表す作法',wordAudio:'assets/礼儀.mp3',sentAudio:'assets/玄関の作法は日本の礼儀の基本です。.mp3',sentAns:'玄関の作法は日本の礼儀の基本です。',wordAns:'礼儀',culture:'礼儀は単なる形式ではなく、相手への敬意の表現である。'},
+  {kanji:'境界',kana:'きょうかい',mean:'内と外を分ける線',wordAudio:'assets/境界.mp3',sentAudio:'assets/玄関は外と内の境界です。.mp3',sentAns:'玄関は外と内の境界です。',wordAns:'境界',culture:'境界は物理的な壁だけでなく心理的な区切りでもある。'},
+  {kanji:'穢れ',kana:'けがれ',mean:'外から持ち込む不浄',wordAudio:'assets/穢れ.mp3',sentAudio:'assets/穢れを門外に留めるのが玄関の役割です。.mp3',sentAns:'穢れを門外に留めるのが玄関の役割です。',wordAns:'穢れ',culture:'穢れの概念は神道に由来し、清浄を重んじる日本文化の根幹である。'},
+  {kanji:'美意識',kana:'びいしき',mean:'美に対する感覚',wordAudio:'assets/美意識.mp3',sentAudio:'assets/整った式瓦は主人の美意識を示します。.mp3',sentAns:'整った式瓦は主人の美意識を示します。',wordAns:'美意識',culture:'美意識は個人の感覚を超え、地域社会に共有された価値観である。'},
+];
+
+const KANJI_TO_KEY={'玄関':null,'車寄せ':'kurumayose','式瓦':'shikigawara','土間':'doma','沓脱石':'kutsunugiishi','蹴込み板':'kekomiita','式台':'shikidai','上がり框':'agarikamachi','床板':'yukaita','礼儀':null,'境界':null,'穢れ':null,'美意識':null};
+
+let lpIdx=0, lpMinimized=false;
+const lpBody=document.getElementById('lp-body');
+const lpEl=document.getElementById('lp');
+const lpPrev=document.getElementById('lp-prev');
+const lpNext=document.getElementById('lp-next');
+const lpDots=document.getElementById('lp-dots');
+
+/* build dots */
+for(let i=0;i<LP_DATA.length;i++){
+  const d=document.createElement('button');
+  d.className='lp-dot'+(i===0?' active':'');
+  d.addEventListener('click',()=>goPage(i));
+  lpDots.appendChild(d);
+}
+
+let currentAudio=null;
+function playAudio(src){
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  const a=new Audio(src);
+  currentAudio=a;
+  a.play().catch(()=>{});
+}
+
+function goPage(idx){
+  lpIdx=idx;
+  renderPage();
+  /* highlight 3D if matching */
+  const key=KANJI_TO_KEY[LP_DATA[idx].kanji];
+  if(key){highlightAndShow(key);}else{hidePopup();}
+}
+
+function renderPage(){
+  const d=LP_DATA[lpIdx];
+  lpBody.innerHTML='';
+  lpBody.className='lp-fade';
+  void lpBody.offsetWidth;
+  lpBody.className='lp-fade';
+
+  /* progress */
+  const prog=document.createElement('div');prog.className='lp-progress';prog.textContent=`${lpIdx+1} / ${LP_DATA.length}`;lpBody.appendChild(prog);
+
+  /* kanji title - hidden until word answered */
+  const kj=document.createElement('div');kj.className='lp-kanji';kj.textContent=d.kanji;kj.style.visibility='hidden';lpBody.appendChild(kj);
+
+  /* word audio */
+  const aw=document.createElement('div');aw.className='lp-audio-wrap';
+  const ab=document.createElement('button');ab.className='lp-audio-btn';ab.textContent='🎵';ab.addEventListener('click',()=>{playAudio(d.wordAudio);ab.classList.add('playing');setTimeout(()=>ab.classList.remove('playing'),1200);});
+  const as=document.createElement('div');as.className='lp-audio-sub';as.textContent='単語を聞く';
+  aw.appendChild(ab);aw.appendChild(as);lpBody.appendChild(aw);
+
+  /* word dictation */
+  const ws=document.createElement('div');ws.className='lp-section';
+  const wl=document.createElement('div');wl.className='lp-label';wl.textContent='✍️ 書き取り';
+  const wr=document.createElement('div');wr.className='lp-input-row';
+  const wi=document.createElement('input');wi.className='lp-input';wi.placeholder='漢字で入力';wi.type='text';
+  const wb=document.createElement('button');wb.className='lp-confirm';wb.textContent='確認';
+  const wf=document.createElement('div');wf.className='lp-feedback';
+  /* word card (hidden initially) */
+  const wc=document.createElement('div');wc.className='lp-card';wc.style.display='none';
+  const wt=document.createElement('div');wt.className='lp-card-top';
+  const wck=document.createElement('span');wck.className='lp-card-kanji';wck.textContent=d.kanji;
+  const wca=document.createElement('span');wca.className='lp-card-kana';wca.textContent=d.kana;
+  wt.appendChild(wck);wt.appendChild(wca);
+  const wm=document.createElement('div');wm.className='lp-card-mean';wm.textContent='→ '+d.mean;
+  wc.appendChild(wt);wc.appendChild(wm);
+
+  wb.addEventListener('click',()=>{
+    const v=wi.value.trim();
+    if(!v)return;
+    if(v===d.wordAns){wf.className='lp-feedback correct';wf.textContent='✓ 正解';wc.style.display='';kj.style.visibility='';ct.textContent=d.culture;ct.classList.remove('lp-culture-blur');}
+    else{wf.className='lp-feedback wrong';wf.textContent=`✗ 不正解。正解は「${d.wordAns}」です。`;}
+  });
+  wi.addEventListener('keydown',e=>{if(e.key==='Enter')wb.click();});
+  wr.appendChild(wi);wr.appendChild(wb);
+  ws.appendChild(wl);ws.appendChild(wr);ws.appendChild(wf);
+  lpBody.appendChild(ws);
+
+  /* word card (inserted after word dictation, shown on correct answer) */
+  lpBody.appendChild(wc);
+
+  /* sentence audio */
+  const sw=document.createElement('div');sw.className='lp-audio-wrap';
+  const sb=document.createElement('button');sb.className='lp-audio-btn';sb.textContent='📝';sb.addEventListener('click',()=>{playAudio(d.sentAudio);sb.classList.add('playing');setTimeout(()=>sb.classList.remove('playing'),1200);});
+  const ss=document.createElement('div');ss.className='lp-audio-sub';ss.textContent='文を再生';
+  sw.appendChild(sb);sw.appendChild(ss);lpBody.appendChild(sw);
+
+  /* sentence dictation - full sentence */
+  const ss2=document.createElement('div');ss2.className='lp-section';
+  const sl=document.createElement('div');sl.className='lp-label';sl.textContent='📝 文を聞いて書く';
+  const sr=document.createElement('div');sr.className='lp-input-row';
+  const si=document.createElement('input');si.className='lp-input';si.placeholder='文を入力';si.type='text';
+  const sbtn=document.createElement('button');sbtn.className='lp-confirm';sbtn.textContent='確認';
+  const sf=document.createElement('div');sf.className='lp-feedback';
+  sbtn.addEventListener('click',()=>{
+    const v=si.value.trim();
+    if(!v)return;
+    if(v===d.sentAns){sf.className='lp-feedback correct';sf.textContent='✓ 正解';}
+    else{sf.className='lp-feedback wrong';sf.textContent='✗ 不正解。正解は「'+d.sentAns+'」です。';}
+  });
+  si.addEventListener('keydown',e=>{if(e.key==='Enter')sbtn.click();});
+  sr.appendChild(si);sr.appendChild(sbtn);
+  ss2.appendChild(sl);ss2.appendChild(sr);ss2.appendChild(sf);
+  lpBody.appendChild(ss2);
+
+  /* culture - keyword blanked out until word answered */
+  const cs=document.createElement('div');cs.className='lp-section';
+  const cl=document.createElement('div');cl.className='lp-label';cl.textContent='🏯 文化ポイント';
+  const blankedCulture=d.culture.replaceAll(d.kanji,'＿＿');
+  const ct=document.createElement('div');ct.className='lp-culture lp-culture-blur';ct.textContent=blankedCulture;
+  cs.appendChild(cl);cs.appendChild(ct);
+  lpBody.appendChild(cs);
+
+  /* update dots & nav */
+  lpPrev.disabled=lpIdx===0;
+  lpNext.textContent=lpIdx===LP_DATA.length-1?'修了':'次へ →';
+  document.querySelectorAll('.lp-dot').forEach((d2,i)=>d2.classList.toggle('active',i===lpIdx));
+}
+
+lpPrev.addEventListener('click',()=>{if(lpIdx>0)goPage(lpIdx-1);});
+lpNext.addEventListener('click',()=>{
+  if(lpIdx<LP_DATA.length-1)goPage(lpIdx+1);
+  else{lpNext.textContent='✓ 完了';setTimeout(()=>{lpNext.textContent='修了';},1200);}
+});
+document.getElementById('lp-min-btn').addEventListener('click',()=>{
+  lpMinimized=!lpMinimized;
+  lpEl.classList.toggle('minimized',lpMinimized);
+  document.getElementById('lp-min-btn').textContent=lpMinimized?'+':'−';
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowLeft'&&lpIdx>0)goPage(lpIdx-1);
+  if(e.key==='ArrowRight'&&lpIdx<LP_DATA.length-1)goPage(lpIdx+1);
+});
+
+/* initial render */
+renderPage();
+
+/* prevent panel events from propagating to 3D */
+lpEl.addEventListener('pointerdown',e=>e.stopPropagation());
+lpEl.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});
+
+/* ============ 动画循环 ============ */
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene,camera);
+  labelRenderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
